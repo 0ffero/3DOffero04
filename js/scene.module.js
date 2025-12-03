@@ -6,17 +6,37 @@ class OrbitingTextScene {
     constructor(container, opts = {}) {
         this.container = container;
         this.opts = Object.assign({
-            word: 'Offero04 ',
+            word: 'Offero 04 ',
             repeats: 2,
             tiltDeg: 45,
-            sphereColor: '#999999',
-            lightIntensity: 6000,
-            letterColor: '#ff8000',
+            letterColor: '#30FF30',
             letterDepth: 1.8,
-            radius: 35,
-            sphereRadius: 28,
-            speed: -0.6 // rotation speed
+            speed: -0.6, // text rotation speed
+
+            lightIntensity: 6000,
+            sphereColor: '#999999',
+            earthRadius: 28,
+            orbitRadius: 35,
+
+            changeHue: true, // should the text hue change over time?
+            colourLetters: 0, // colour letters differently based on position?
+            /*  
+                colourLettersOffset: number
+                higher = more gradual changes 
+                eg:
+                    2 = every 2nd letter will have the same colour
+                    4 = every 4th letter
+                    10 = every 10th letter
+                    etc.
+                    
+                If the number is more than the letter count (such as 100), the difference between letter colours will be more subtle
+                Think of it like scaling up the HSL over a wider space to cover more letters
+            */
+            colourLettersOffset: 100,
+            textHue: 0,
+            textHueInc: 0.01
         }, opts);
+
 
         this.clock = new THREE.Clock();
         this._init();
@@ -72,7 +92,7 @@ class OrbitingTextScene {
         this.scene.add(this.skySphere);
 
         // Earth Sphere
-        const sphereGeo = new THREE.SphereGeometry(this.opts.sphereRadius, 64, 64);
+        const sphereGeo = new THREE.SphereGeometry(this.opts.earthRadius, 64, 64);
         const sphereMat = new THREE.MeshStandardMaterial({
             color: this.opts.sphereColor,
             metalness: 0.3,
@@ -86,7 +106,7 @@ class OrbitingTextScene {
         this.sphere.rotateOnAxis( new THREE.Vector3(0,1,0).normalize(), Math.PI/180*23.5 );
 
         // Cloud Layer
-        const cloudGeo = new THREE.SphereGeometry(this.opts.sphereRadius + 0.4, 64, 64);
+        const cloudGeo = new THREE.SphereGeometry(this.opts.earthRadius + 0.4, 64, 64);
         const cloudMat = new THREE.MeshStandardMaterial({
             map: configureTexture(cloudTex),
             color: 0xffffff,
@@ -112,38 +132,13 @@ class OrbitingTextScene {
         this.animate();
     }
 
-    async _loadAssets() {
-        const textureLoader = new THREE.TextureLoader();
-        textureLoader.path = './assets/';
-        const fontLoader = new FontLoader();
-
-        const texturePromises = [
-            'milkyway.jpg',
-            'earthmap.jpg',
-            'earthnormal.jpg',
-            'earthclouds.png'
-        ].map(url => textureLoader.loadAsync(url));
-
-        const fontPromise = fontLoader.loadAsync('https://unpkg.com/three@0.181.0/examples/fonts/gentilis_bold.typeface.json');
-
-        return Promise.all([...texturePromises, fontPromise]);
-    }
-
-    _clearLetters() {
-        while (this.letterGroup.children.length) {
-            const c = this.letterGroup.children.pop();
-            if (c.geometry) c.geometry.dispose();
-            if (c.material) c.material.dispose();
-        }
-    }
-
     _buildLetters() {
         this._clearLetters();
         const opts = this.opts;
         const word = String(opts.word);
         const totalLetters = word.length * opts.repeats;
         const step = Math.PI * 2 / totalLetters;
-        const radius = opts.radius;
+        const radius = opts.orbitRadius;
 
         for (let r = 0; r < opts.repeats; r++) {
             for (let i = 0; i < word.length; i++) {
@@ -175,7 +170,7 @@ class OrbitingTextScene {
 
                 // vertical offset to create the left-lower / right-higher look
                 // We'll use a sinusoidal vertical offset so letters on left (angle ~ pi/2 or 3pi/2) move lower
-                const verticalAmp = 10; // amplitude
+                const verticalAmp = 12; // amplitude
                 const y = Math.sin(angle + Math.PI / 2) * verticalAmp * -0.6; // tweak sign so left is lower
 
                 mesh.position.set(x, y, z);
@@ -187,7 +182,7 @@ class OrbitingTextScene {
                 mesh.rotation.z = Math.cos(angle) * tiltRad * 0.08; // slight roll
 
                 // push slightly outward so letters don't intersect sphere
-                const pushOut = 8 + (i % 2 === 0 ? 0.5 : 0);
+                const pushOut = 4 + (i % 2 === 0 ? 0.5 : 0);
                 mesh.position.add(new THREE.Vector3(Math.sin(angle) * pushOut, 0, Math.cos(angle) * pushOut));
 
                 // store angle for animation offset if needed
@@ -196,6 +191,31 @@ class OrbitingTextScene {
                 this.letterGroup.add(mesh);
             }
         }
+    }
+
+    _clearLetters() {
+        while (this.letterGroup.children.length) {
+            const c = this.letterGroup.children.pop();
+            if (c.geometry) c.geometry.dispose();
+            if (c.material) c.material.dispose();
+        }
+    }
+
+    async _loadAssets() {
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.path = './assets/';
+        const fontLoader = new FontLoader();
+
+        const texturePromises = [
+            'milkyway.jpg',
+            'earthmap.jpg',
+            'earthnormal.jpg',
+            'earthclouds.png'
+        ].map(url => textureLoader.loadAsync(url));
+
+        const fontPromise = fontLoader.loadAsync('https://unpkg.com/three@0.181.0/examples/fonts/gentilis_bold.typeface.json');
+
+        return Promise.all([...texturePromises, fontPromise]);
     }
 
     _onResize() {
@@ -211,11 +231,17 @@ class OrbitingTextScene {
             const dt = this.clock.getDelta();
             // rotate the whole group slowly around Y
             this.letterGroup.rotation.y += this.opts.speed*dt;
+            let opts = this.opts;
 
             // Make each letter face the camera (billboarding)
-            this.letterGroup.children.forEach(letter => {
+            let cLO = this.opts.colourLettersOffset;
+            this.letterGroup.children.forEach((letter,i) => {
+                this.opts.changeHue && letter.material.color.setHSL(opts.textHue+i*(1/cLO*this.opts.colourLetters),1,0.5);
                 letter.lookAt(this.camera.position);
             });
+            if (this.opts.changeHue) {
+                this.updateHue(dt);
+            };
 
             // small subtle rotation on sphere to give it some life (but not changing POV)
             this.sphere.rotation.y += 0.1*dt;
@@ -230,7 +256,9 @@ class OrbitingTextScene {
 
     dispose() {
         cancelAnimationFrame(this._raf);
-        // dispose scene resources if needed (omitted for brevity)
+        this._clearLetters();
+        this.renderer.dispose();
+        this.container.removeChild(this.renderer.domElement);
     }
 
     setOptions(opts) {
@@ -240,6 +268,12 @@ class OrbitingTextScene {
         this.sphere.material.color.set(this.opts.sphereColor);
         // update letter materials & rebuild
         this._buildLetters();
+    }
+
+    updateHue(dt) {
+        let opts = this.opts;
+        opts.textHue += opts.textHueInc*dt;
+        opts.textHue %= 1;
     }
 };
 

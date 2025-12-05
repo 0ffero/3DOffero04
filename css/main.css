@@ -1,13 +1,49 @@
 html,
 body {
-    height: 100%;
-    margin: 0;
     background: #111111;
+    height: 100%;
+    overflow: hidden;
+    margin: 0;
 }
 
 #canvasContainer {
-    width: 100%;
     height: 100%;
+    mix-blend-mode: normal;
     overflow: hidden;
     position: relative;
+    width: 100%;
+}
+
+#infoPopupContainer {
+    align-items: center;
+    height: 100vh;
+    justify-content: center;
+    display: flex;
+    left: 0;
+    position: absolute;
+    text-align: center;
+    top: 0;
+    width: 100%;
+}
+
+#infoPopup {
+    transition: transform 1s ease-in-out;
+
+    background: rgba(0,0,0,0.6);
+    border-radius: 5px;
+    color: white;
+    font-family: Arial, sans-serif;
+    font-size: 18px;
+    font-weight: bold;
+    padding: 35px 15px;
+    position: absolute;
+    top: 20px;
+    transform: translateY(110vh);
+    width: 95%;
+    z-index: 10;
+}
+#infoPopup.active {
+    transition: transform 1s ease-in-out;
+
+    transform: translateY(90vh);
 }

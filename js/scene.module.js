@@ -9,13 +9,14 @@ class OrbitingTextScene {
             word: 'Offero 04 ',
             repeats: 2,
             tiltDeg: 45,
-            letterColor: '#30FF30',
+            letterColour: '#30FF30',
             letterDepth: 1.8,
             speed: -0.6, // text rotation speed
 
             lightIntensity: 6000,
-            sphereColor: '#999999',
+            sphereColour: '#999999',
             earthRadius: 28,
+            marsColour: '#BBBBBB',
             orbitRadius: 35,
 
             changeHue: true, // should the text hue change over time?
@@ -37,6 +38,16 @@ class OrbitingTextScene {
             textHueInc: 0.01
         }, opts);
 
+        this.textures = [
+            'milkyway.jpg',
+            'earthmap.jpg',
+            'earthnormal.jpg',
+            'earthclouds.png',
+            'mooncolour.jpg',
+            'marscolour.jpg',
+            'marsnormal.jpg',
+            'jupiter.jpg'
+        ];
 
         this.clock = new THREE.Clock();
         this._init();
@@ -65,45 +76,42 @@ class OrbitingTextScene {
         this.scene.add(this.pointLight);
 
         // Load all assets concurrently
-        const [milkywayTex, earthTex, normalTex, cloudTex, font] = await this._loadAssets();
+        const [milkywayTex, earthTex, earthNormalTex, cloudTex, moonTex, marsTex, marsNormalTex, jupiterTex, font] = await this._loadAssets();
 
-        // Configure textures
-        const configureTexture = (tex, mapping = THREE.UVMapping) => {
-            tex.encoding = THREE.sRGBEncoding;
-            const maxAniso = this.renderer.capabilities.getMaxAnisotropy();
-            if (maxAniso) tex.anisotropy = maxAniso;
-            tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-            tex.mapping = mapping;
-            return tex;
-        };
+        const configureTexture = this._configureTexture.bind(this);
 
-        // Sky Sphere
-        const skyGeo = new THREE.SphereGeometry(100, 64, 64);
-        const skyMat = new THREE.MeshBasicMaterial({
-            map: configureTexture(milkywayTex, THREE.EquirectangularReflectionMapping),
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.2,
-            depthWrite: false,
-            side: THREE.BackSide
-        });
-        this.skySphere = new THREE.Mesh(skyGeo, skyMat);
-        this.skySphere.rotation.x = Math.PI; // align texture
-        this.scene.add(this.skySphere);
+        this._initSkySphere(configureTexture, milkywayTex);
+        this._initEarth(configureTexture, earthTex, earthNormalTex, cloudTex);
+        this._initMoon(configureTexture, moonTex);
+        this._initMars(configureTexture, marsTex, marsNormalTex);
+        this._initJupiter(configureTexture, jupiterTex);
 
-        // Earth Sphere
-        const sphereGeo = new THREE.SphereGeometry(this.opts.earthRadius, 64, 64);
-        const sphereMat = new THREE.MeshStandardMaterial({
-            color: this.opts.sphereColor,
+        // Letters
+        this.letterGroup = new THREE.Group();
+        this.scene.add(this.letterGroup);
+        this.font = font;
+        this._buildLetters();
+
+        // Event Listeners & Animation
+        window.addEventListener('resize', () => this._onResize());
+        this.animate();
+    }
+
+    
+
+    _initEarth(configureTexture, earthTex, earthNormalTex, cloudTex) {
+        // Earth
+        const earthGeo = new THREE.SphereGeometry(this.opts.earthRadius, 64, 64);
+        const earthMat = new THREE.MeshStandardMaterial({
+            color: this.opts.sphereColour,
             metalness: 0.3,
             roughness: 0.6,
             map: configureTexture(earthTex),
-            normalMap: configureTexture(normalTex)
+            normalMap: configureTexture(earthNormalTex)
         });
-        this.sphere = new THREE.Mesh(sphereGeo, sphereMat);
-        this.sphere.receiveShadow = true;
-        this.scene.add(this.sphere);
-        this.sphere.rotateOnAxis( new THREE.Vector3(0,1,0).normalize(), Math.PI/180*23.5 );
+        this.earth = new THREE.Mesh(earthGeo, earthMat);
+        this.earth.receiveShadow = true;
+        this.scene.add(this.earth);
 
         // Cloud Layer
         const cloudGeo = new THREE.SphereGeometry(this.opts.earthRadius + 0.4, 64, 64);
@@ -120,16 +128,62 @@ class OrbitingTextScene {
         this.cloudLayer = new THREE.Mesh(cloudGeo, cloudMat);
         this.cloudLayer.name = 'cloudLayer';
         this.scene.add(this.cloudLayer);
+    }
 
-        // Letters
-        this.letterGroup = new THREE.Group();
-        this.scene.add(this.letterGroup);
-        this.font = font;
-        this._buildLetters();
+    _initJupiter(configureTexture, jupiterTex) {
+        // Earth
+        const jupiterGeo = new THREE.SphereGeometry(32, 64, 64);
+        const jupiterMat = new THREE.MeshStandardMaterial({
+            color: this.opts.sphereColour,
+            metalness: 0.3,
+            roughness: 0.6,
+            map: configureTexture(jupiterTex)
+        });
+        this.jupiter = new THREE.Mesh(jupiterGeo, jupiterMat);
+        this.jupiter.position.set(-45, 20, -50);
+        this.scene.add(this.jupiter);
+    }
 
-        // Event Listeners & Animation
-        window.addEventListener('resize', () => this._onResize());
-        this.animate();
+    _initMars(configureTexture, marsTex, marsNormalTex) {
+        const marsGeo = new THREE.SphereGeometry(14, 64, 64);
+        const marsMat = new THREE.MeshStandardMaterial({
+            color: this.opts.marsColour,
+            metalness: 0.3,
+            roughness: 0.6,
+            map: configureTexture(marsTex),
+            normalMap: configureTexture(marsNormalTex)
+        });
+        this.mars = new THREE.Mesh(marsGeo, marsMat);
+        this.mars.position.set(70, 3, -55);
+        this.scene.add(this.mars);
+    }
+
+    _initMoon(configureTexture, moonTex) {
+        const moonGeo = new THREE.SphereGeometry(7, 32, 32);
+        const moonMat = new THREE.MeshStandardMaterial({
+            map: configureTexture(moonTex),
+            color: 0x888888,
+            metalness: 0.5,
+            roughness: 0.7
+        });
+        this.moon = new THREE.Mesh(moonGeo, moonMat);
+        this.moon.position.set(-60, 20, -10);
+        this.scene.add(this.moon);
+    }
+
+    _initSkySphere(configureTexture, milkywayTex) {
+        const skyGeo = new THREE.SphereGeometry(100, 64, 64);
+        const skyMat = new THREE.MeshBasicMaterial({
+            map: configureTexture(milkywayTex, THREE.EquirectangularReflectionMapping),
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.2,
+            depthWrite: false,
+            side: THREE.BackSide
+        });
+        this.skySphere = new THREE.Mesh(skyGeo, skyMat);
+        this.skySphere.rotation.x = Math.PI; // align texture
+        this.scene.add(this.skySphere);
     }
 
     _buildLetters() {
@@ -160,7 +214,7 @@ class OrbitingTextScene {
                 const bz = (txtGeo.boundingBox.max.z + txtGeo.boundingBox.min.z) / 2;
                 txtGeo.translate(-bx, -by, -bz);
 
-                const mat = new THREE.MeshStandardMaterial({ color: opts.letterColor, metalness: 0.03, roughness: 0.7 });
+                const mat = new THREE.MeshStandardMaterial({ color: opts.letterColour, metalness: 0.03, roughness: 0.7 });
                 const mesh = new THREE.Mesh(txtGeo, mat);
                 mesh.castShadow = true;
 
@@ -201,17 +255,21 @@ class OrbitingTextScene {
         }
     }
 
+    _configureTexture = (tex, mapping = THREE.UVMapping) => {
+        tex.encoding = THREE.sRGBEncoding;
+        const maxAniso = this.renderer.capabilities.getMaxAnisotropy();
+        if (maxAniso) tex.anisotropy = maxAniso;
+        tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex.mapping = mapping;
+        return tex;
+    }
+
     async _loadAssets() {
         const textureLoader = new THREE.TextureLoader();
         textureLoader.path = './assets/';
         const fontLoader = new FontLoader();
 
-        const texturePromises = [
-            'milkyway.jpg',
-            'earthmap.jpg',
-            'earthnormal.jpg',
-            'earthclouds.png'
-        ].map(url => textureLoader.loadAsync(url));
+        const texturePromises = this.textures.map(url => textureLoader.loadAsync(url));
 
         const fontPromise = fontLoader.loadAsync('https://unpkg.com/three@0.181.0/examples/fonts/gentilis_bold.typeface.json');
 
@@ -239,14 +297,16 @@ class OrbitingTextScene {
                 this.opts.changeHue && letter.material.color.setHSL(opts.textHue+i*(1/cLO*this.opts.colourLetters),1,0.5);
                 letter.lookAt(this.camera.position);
             });
-            if (this.opts.changeHue) {
-                this.updateHue(dt);
-            };
 
-            // small subtle rotation on sphere to give it some life (but not changing POV)
-            this.sphere.rotation.y += 0.1*dt;
+            this.opts.changeHue && this.updateHue(dt);
+
+            // add rotation to planets & sky
+            this.earth.rotation.y += 0.1*dt;
             this.cloudLayer.rotation.y += 0.12*dt;
             this.skySphere.rotation.y += 0.005*dt;
+            this.mars.rotation.y -= 0.1*dt;
+            this.jupiter.rotation.y -= 0.005*dt;
+
 
             this.renderer.render(this.scene, this.camera);
             this._raf = requestAnimationFrame(tick);
@@ -265,7 +325,7 @@ class OrbitingTextScene {
         Object.assign(this.opts, opts);
         // update light intensity & sphere color & rebuild letters
         this.pointLight.intensity = this.opts.lightIntensity;
-        this.sphere.material.color.set(this.opts.sphereColor);
+        this.jupiter.material.color.set(this.opts.sphereColour);
         // update letter materials & rebuild
         this._buildLetters();
     }
@@ -273,7 +333,7 @@ class OrbitingTextScene {
     updateHue(dt) {
         let opts = this.opts;
         opts.textHue += opts.textHueInc*dt;
-        opts.textHue %= 1;
+        opts.textHue %= 1; // stops letters flashing after they hit 1.0
     }
 };
 

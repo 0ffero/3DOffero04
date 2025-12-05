@@ -6,10 +6,10 @@ let vars = {
         DEBUG MODE
         When true, exposes vars and THREE to the global window object.
     */
-    DEBUG: true, // set to false for production
+    DEBUG: false, // set to false for production
     title: "Offero Orbiter",
     description: "A 3D Offero 04 orbiting around the earth.",
-    version: "1.5",
+    version: "1.5.3",
     instructions: `Options can be set or changed using setOptions() method of the scene object or when initialising the scene.
 vars.DEBUG must be true to access the scene object via vars.scene.
 
@@ -41,10 +41,10 @@ OPTIONS:
         console.log(`%c  > Scene initialized`, consoleCSS);
 
         vars._initBlendModes();
-        vars.getAndSetNextBlendMode();
+        vars.getAndSetNextBlendMode(true);
+        setTimeout (()=> { vars.showPopup(); }, 750);
+        
         vars._initEventListeners();
-
-        vars.showPopup();
     },
 
     _initBlendModes() {
@@ -55,13 +55,8 @@ OPTIONS:
     _initEventListeners: ()=> {
         window.addEventListener('keyup', (e)=> {
             switch(e.code) {
-                case 'KeyM': // change colour mix-blend-mode
-                    vars.getAndSetNextBlendMode();
-                break;
-
-                case 'KeyV': // toggle view
-                    vars.scene.switchViewType();
-                break;
+                case 'KeyM': vars.getAndSetNextBlendMode(); break; // change colour mix-blend-mode
+                case 'KeyV': vars.scene.switchViewType(); break; // toggle view
             };
         });
     },
@@ -70,26 +65,31 @@ OPTIONS:
         return str.charAt(0).toUpperCase() + str.slice(1);
     },
 
-    getAndSetNextBlendMode: ()=> {
+    getAndSetNextBlendMode: (init=false)=> {
         let nextBlendMode = vars.mixBlendModes.shift();
         vars.mixBlendModes.push(nextBlendMode);
         vars.container.style.mixBlendMode = nextBlendMode;
 
-        vars.showPopup(`Colour Mix Blend Mode<br/>${vars.firstToUpper(nextBlendMode)}`);
+        !init && vars.showPopup(`Colour Mix Blend Mode<br/>${vars.firstToUpper(nextBlendMode)}`);
     },
 
     showPopup: (msg='', hideDelay=5000)=> {
         !msg && (msg = `Press the M key to change the colour mix mode.<br/>Press the V key to switch view.`);
-
         clearTimeout(vars.infoTimeout);
+        let p = document.getElementById('infoPopup');
+        p.innerHTML = msg;
 
-        let popup = document.getElementById('infoPopup');
-        popup.innerHTML = msg;
-
-        popup.classList.add('active');
-        vars.infoTimeout = setTimeout(()=> {
-            popup.classList.remove('active');
-        }, hideDelay);
+        setTimeout(()=> { // wait for DOM to update
+            let pPos = p.getBoundingClientRect();
+            let iH = window.innerHeight;
+    
+            let yPos = iH - pPos.height-35;
+    
+            p.style.transform = `translateY(${yPos}px)`;
+            vars.infoTimeout = setTimeout(()=> {
+                p.style.transform = `translateY(100vh)`;
+            }, hideDelay);
+        }, 0);
     }
 };
 
@@ -103,3 +103,5 @@ if (vars.DEBUG) {
     console.log("%cDEBUG MODE: vars and THREE are exposed to the global window object.", infoCSS.replace('color: #FFFF00', 'color: #FF0000'));
 };
 console.log(`%c${vars.instructions}`, infoCSS);
+
+export { vars };

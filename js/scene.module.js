@@ -1,6 +1,7 @@
 import * as THREE from 'https://unpkg.com/three@0.181.0/build/three.module.js';
 import { FontLoader } from 'https://unpkg.com/three@0.181.0/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'https://unpkg.com/three@0.181.0/examples/jsm/geometries/TextGeometry.js';
+import { vars } from './vars.js';
 
 class OrbitingTextScene {
     constructor(container, opts = {}) {
@@ -339,14 +340,16 @@ class OrbitingTextScene {
 
     switchViewType() {
         this.opts.cinematicMode = !this.opts.cinematicMode;
-        let offsetAngle = Math.PI / 180 * -23.5;
+        let offsetAngle = Math.PI / 180 * 23.5;
         if (this.opts.cinematicMode) {
             this.earthGroup.rotation.z = 0;
-            this.camera.rotateZ(Math.PI / 180 * -23.5);
+            this.camera.rotateZ(offsetAngle*-1);
+            vars.showPopup('Camera Tilted ✅<br/>Earth Tilted ❌');
         } else {
-            this.earthGroup.rotation.z = Math.PI / 180 * 23.5;
-            this.camera.rotateZ(Math.PI / 180 * 23.5);
-        }
+            this.earthGroup.rotation.z = offsetAngle;
+            this.camera.rotateZ(offsetAngle);
+            vars.showPopup('Camera Tilted ❌<br/>Earth Tilted ✅');
+        };
     }
 
     updateHue(dt) {

@@ -8,6 +8,7 @@ class OrbitingTextScene {
         this.opts = Object.assign({
             word: 'Offero 04 ',
             repeats: 2,
+            cinematicMode: true,
             tiltDeg: 45,
             letterColour: '#30FF30',
             letterDepth: 1.8,
@@ -60,7 +61,7 @@ class OrbitingTextScene {
         this.camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 2000);
         this.camera.position.set(0, 20, 130);
         this.camera.lookAt(0, 0, 0);
-        this.camera.rotateZ(Math.PI / 180 * -23.5);
+        this.opts.cinematicMode && this.camera.rotateZ(Math.PI / 180 * -23.5);
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -97,9 +98,10 @@ class OrbitingTextScene {
         this.animate();
     }
 
-    
-
     _initEarth(configureTexture, earthTex, earthNormalTex, cloudTex) {
+        const earthGroup = this.earthGroup = new THREE.Group();
+        this.scene.add(earthGroup);
+
         // Earth
         const earthGeo = new THREE.SphereGeometry(this.opts.earthRadius, 64, 64);
         const earthMat = new THREE.MeshStandardMaterial({
@@ -128,6 +130,11 @@ class OrbitingTextScene {
         this.cloudLayer = new THREE.Mesh(cloudGeo, cloudMat);
         this.cloudLayer.name = 'cloudLayer';
         this.scene.add(this.cloudLayer);
+
+        earthGroup.add(this.earth);
+        earthGroup.add(this.cloudLayer);
+
+        this.opts.cinematicMode && (earthGroup.rotation.z = THREE.MathUtils.degToRad(23.5));
     }
 
     _initJupiter(configureTexture, jupiterTex) {
@@ -328,6 +335,18 @@ class OrbitingTextScene {
         this.jupiter.material.color.set(this.opts.sphereColour);
         // update letter materials & rebuild
         this._buildLetters();
+    }
+
+    switchViewType() {
+        this.opts.cinematicMode = !this.opts.cinematicMode;
+        let offsetAngle = Math.PI / 180 * -23.5;
+        if (this.opts.cinematicMode) {
+            this.earthGroup.rotation.z = 0;
+            this.camera.rotateZ(Math.PI / 180 * -23.5);
+        } else {
+            this.earthGroup.rotation.z = Math.PI / 180 * 23.5;
+            this.camera.rotateZ(Math.PI / 180 * 23.5);
+        }
     }
 
     updateHue(dt) {

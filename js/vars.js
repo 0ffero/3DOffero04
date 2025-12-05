@@ -9,7 +9,7 @@ let vars = {
     DEBUG: true, // set to false for production
     title: "Offero Orbiter",
     description: "A 3D Offero 04 orbiting around the earth.",
-    version: "1.3",
+    version: "1.5",
     instructions: `Options can be set or changed using setOptions() method of the scene object or when initialising the scene.
 vars.DEBUG must be true to access the scene object via vars.scene.
 
@@ -55,8 +55,12 @@ OPTIONS:
     _initEventListeners: ()=> {
         window.addEventListener('keyup', (e)=> {
             switch(e.code) {
-                case 'KeyC': // change colour mix-blend-mode
+                case 'KeyM': // change colour mix-blend-mode
                     vars.getAndSetNextBlendMode();
+                break;
+
+                case 'KeyV': // toggle view
+                    vars.scene.switchViewType();
                 break;
             };
         });
@@ -71,16 +75,16 @@ OPTIONS:
         vars.mixBlendModes.push(nextBlendMode);
         vars.container.style.mixBlendMode = nextBlendMode;
 
-        vars.showPopup(`Colour Mix Blend Mode: ${vars.firstToUpper(nextBlendMode)}`);
+        vars.showPopup(`Colour Mix Blend Mode<br/>${vars.firstToUpper(nextBlendMode)}`);
     },
 
     showPopup: (msg='', hideDelay=5000)=> {
-        !msg && (msg = `Press the C key to change the colour mix mode.`);
+        !msg && (msg = `Press the M key to change the colour mix mode.<br/>Press the V key to switch view.`);
 
         clearTimeout(vars.infoTimeout);
 
         let popup = document.getElementById('infoPopup');
-        popup.innerText = msg;
+        popup.innerHTML = msg;
 
         popup.classList.add('active');
         vars.infoTimeout = setTimeout(()=> {

@@ -352,6 +352,49 @@ class OrbitingTextScene {
         };
     }
 
+    toggleZoom() {
+        // Zoom In
+        let c = this.camera;
+        if (c.fov!==45 && c.fov!==90) return; // already zooming
+
+        let zDefault = 130;
+        let zMin = 80;
+        let fovDefault = 45;
+        let fovMax = 90;
+        let zoomIn = c.fov===fovMax ? false : true;
+        let totalFrames = 240;
+        let zDelta = zDefault-zMin;
+        let cDelta = fovMax-fovDefault;
+        let cInc = cDelta/totalFrames;
+        let zInc = zDelta/totalFrames;
+
+
+        this.scaleInterval = setInterval(()=> {
+            if (zoomIn && (c.fov>=fovMax || c.position.z<=zMin)) {
+                clearInterval(this.scaleInterval);
+
+                c.fov=fovMax;
+                c.position.z = zMin;
+                c.updateProjectionMatrix();
+                return;
+            };
+
+            if (!zoomIn && (c.fov<=fovDefault || c.position.z>=zDefault)) {
+                clearInterval(this.scaleInterval);
+
+                c.fov=fovDefault;
+                c.position.z = zDefault;
+                return;
+            };
+
+            c.position.z += zoomIn ? -zInc : zInc;
+            c.fov += zoomIn ? cInc : -cInc;
+            c.updateProjectionMatrix();
+        }, 1000/60);
+
+        vars.showPopup(!zoomIn ? 'Zooming In ✅' : 'Zooming Out ✅');
+    }
+
     updateHue(dt) {
         let opts = this.opts;
         opts.textHue += opts.textHueInc*dt;

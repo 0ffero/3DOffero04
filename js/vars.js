@@ -9,7 +9,7 @@ let vars = {
     DEBUG: false, // set to false for production
     title: "Offero Orbiter",
     description: "A 3D Offero 04 orbiting around the earth.",
-    version: "1.5.3",
+    version: "1.6",
     instructions: `Options can be set or changed using setOptions() method of the scene object or when initialising the scene.
 vars.DEBUG must be true to access the scene object via vars.scene.
 
@@ -55,8 +55,10 @@ OPTIONS:
     _initEventListeners: ()=> {
         window.addEventListener('keyup', (e)=> {
             switch(e.code) {
+                case 'KeyH': vars.showPopup(); break; // show help
                 case 'KeyM': vars.getAndSetNextBlendMode(); break; // change colour mix-blend-mode
                 case 'KeyV': vars.scene.switchViewType(); break; // toggle view
+                case 'KeyZ': vars.scene.toggleZoom(); break; // toggle zoom
             };
         });
     },
@@ -74,7 +76,7 @@ OPTIONS:
     },
 
     showPopup: (msg='', hideDelay=5000)=> {
-        !msg && (msg = `Press the M key to change the colour mix mode.<br/>Press the V key to switch view.`);
+        !msg && (msg = `Press H for this help page.<br/>Press the M key to change the colour mix mode.<br/>Press the V key to switch view.<br/>Press The Z key to toggle between zooms.`);
         clearTimeout(vars.infoTimeout);
         let p = document.getElementById('infoPopup');
         p.innerHTML = msg;
